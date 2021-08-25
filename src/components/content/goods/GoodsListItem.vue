@@ -1,6 +1,6 @@
 <template>
-  <div class="goods-item">
-    <img :src="goodsItem.show.img" alt="" />
+  <div class="goods-item" @click="itemClick">
+    <img v-lazy="showImage" @load="imageLoad" />
     <div class="goods-info">
       <p>{{ goodsItem.title }}</p>
       <span class="price">{{ goodsItem.price }}</span>
@@ -19,6 +19,30 @@ export default {
       default() {
         return {};
       },
+    },
+  },
+  computed: {
+    showImage() {
+      return this.goodsItem.image || this.goodsItem.show.img;
+    },
+  },
+
+  methods: {
+    imageLoad() {
+      // 都发送同一个事件
+      this.$bus.$emit("itemImageLoad");
+
+      // 根据路由进行判断
+      // if (this.$route.path.indexOf("/home")) {
+      // 如果在 /home 里面就发送这个事件，如果不在 /home 里面就不要发送这个事件
+      // this.$bus.$emit("homeitemImgLoad");
+      // } else if (this.$router.path.indexOf("/detail")) {
+      // this.$bus.$emit("detailitemImgLoad");
+      // }
+    },
+
+    itemClick() {
+      this.$router.push("/detail" + this.goodsItem.iid);
     },
   },
 };

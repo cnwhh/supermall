@@ -10,6 +10,7 @@ export function request(config) {
   // 请求拦截器
   instance.interceptors.request.use(config => {
     //拦截后需要将拦截下来的请求数据返回发送
+    // console.log(res);
     return config;
   }, err => {
 
@@ -24,4 +25,5 @@ export function request(config) {
   })
 
   return instance(config)
+
 }

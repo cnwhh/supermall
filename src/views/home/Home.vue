@@ -1,60 +1,35 @@
 <template>
   <div id="home">
     <nav-bar class="home-nav"><div slot="center">购物街</div></nav-bar>
-    <home-swiper :banners="banners"></home-swiper>
-    <recommend-view :recommends="recommends"></recommend-view>
-    <feature-view></feature-view>
     <tab-control
       class="tab-control"
+      ref="tabControl1"
       :titles="['流行', '新款', '精选']"
       @tabClick="tabClick"
+      v-show="isTabFixed"
     ></tab-control>
-    <goods-list :goods="showGoods"></goods-list>
-    <ul>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-      <li>123</li>
-    </ul>
+    <scroll
+      class="content"
+      ref="scroll"
+      :probe-type="3"
+      @scroll="contentScroll"
+      :pull-up-load="true"
+      @pullingUp="loadMore"
+    >
+      <home-swiper
+        :banners="banners"
+        @swiperImageLoad="swiperImageLoad"
+      ></home-swiper>
+      <recommend-view :recommends="recommends"></recommend-view>
+      <feature-view></feature-view>
+      <tab-control
+        ref="tabControl2"
+        :titles="['流行', '新款', '精选']"
+        @tabClick="tabClick"
+      ></tab-control>
+      <goods-list :goods="showGoods"></goods-list>
+    </scroll>
+    <back-top @click.native="backClick" v-show="isShowBackTop"></back-top>
   </div>
 </template>
 
@@ -66,8 +41,11 @@ import FeatureView from "./childComps/FeatureView.vue";
 import NavBar from "components/common/navbar/NavBar.vue";
 import TabControl from "components/content/tabControl/TabControl.vue";
 import GoodsList from "components/content/goods/GoodsList.vue";
+import Scroll from "components/common/scroll/Scroll.vue";
 
 import { getHomeMultidata, getHomeGoods } from "network/home";
+import { debouce } from "common/utils.js";
+import { itemListenerMixin, backTopMixin } from "common/mixin.js";
 
 export default {
   name: "Home",
@@ -77,10 +55,10 @@ export default {
     FeatureView,
     NavBar,
     TabControl,
-    TabControl,
     GoodsList,
-    GoodsList,
+    Scroll,
   },
+  mixins: [itemListenerMixin, backTopMixin],
   data() {
     return {
       banners: [],
@@ -91,12 +69,34 @@ export default {
         sell: { page: 0, list: [] },
       },
       currentType: "pop",
+
+      tabOffsetTop: 0,
+      // 默认不吸顶
+      isTabFixed: false,
+      saveY: 0,
     };
   },
   computed: {
     showGoods() {
       return this.goods[this.currentType].list;
     },
+  },
+
+  // 进入页面时调用
+  activated() {
+    this.$refs.scroll.scroll.scrollTo(0, this.saveY, 1);
+    // 针对返回后不能滚动的问题
+    this.$refs.scroll.scroll.refresh();
+  },
+
+  // 离开页面时调用
+  deactivated() {
+    // 1、保存Y值
+    this.saveY = this.$refs.scroll.getScrollY();
+
+    // 2、取消全局事件的监听
+    // this.$bus.$off('itemImageLoad',函数)
+    this.$bus.$off("itemImageLoad", this.itemImageListener);
   },
   created() {
     // 1、请求多个数据
@@ -107,8 +107,25 @@ export default {
     this.getHomeGoods("sell");
   },
 
+  mounted() {
+    // 图片加载完成的事件监听
+    // 调用频繁就先做一层封装
+    // let newRefresh = debouce(this.$refs.scroll.refresh, 200);
+    // 3、监听item中图片加载完成
+    // 对监听的事件进行保存
+    // this.itemImagListener = () => {
+    // 刷新
+    // newRefresh();
+    // };
+    // this.$bus.$on("itemImageLoad", this.itemImageListener);
+    // this.$bus.$on("itemImageLoad", () => {
+    //   refresh();
+    // });
+  },
+
   methods: {
     // 事件监听相关的方法
+
     tabClick(index) {
       switch (index) {
         case 0:
@@ -123,6 +140,26 @@ export default {
         default:
           break;
       }
+      this.$refs.tabControl1.currentIndex = index;
+      this.$refs.tabControl2.currentIndex = index;
+    },
+
+    contentScroll(position) {
+      // 1、判断BackTop是否显示
+      this.isShowBackTop = -position.y > 1000;
+
+      // 2、决定tabControl是否吸顶(position:fixed)
+      this.isTabFixed = -position.y > this.tabOffSetTop;
+    },
+
+    loadMore() {
+      // 加载当前选中页面的更多
+      this.getHomeGoods(this.currentType);
+    },
+
+    swiperImageLoad() {
+      // 2、获取tabControl的offsetTop
+      this.tabOffSetTop = this.$refs.tabControl2.$el.offsetTop;
     },
 
     // 网络请求相关方法
@@ -131,6 +168,7 @@ export default {
       getHomeMultidata().then((res) => {
         this.banners = res.data.banner.list;
         this.recommends = res.data.recommend.list;
+        console.log(res);
       });
     },
 
@@ -140,29 +178,45 @@ export default {
         this.goods[type].list.push(...res.data.list);
         // 多了一组数据后，页码要加一
         this.goods[type].page += 1;
+
+        // 完成上拉加载更多
+        this.$refs.scroll.finishPullUp();
       });
     },
   },
 };
 </script>
 
-<style>
+<style scoped>
 #home {
-  padding-top: 44px;
+  /* padding-top: 44px; */
+  /* 100%个视口 */
+  height: 100vh;
+  position: relative;
 }
 .home-nav {
   background-color: var(--color-tint);
   color: #fff;
 
-  position: fixed;
+  /* position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 9;
+  z-index: 9; */
 }
 .tab-control {
-  position: sticky;
-  top: 44px;
+  position: relative;
+  /* top: 44px; */
   z-index: 9;
+}
+.content {
+  /* height: calc(100%-93px); */
+  overflow: hidden;
+
+  position: absolute;
+  top: 44px;
+  bottom: 49px;
+  left: 0;
+  right: 0;
 }
 </style>

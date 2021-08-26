@@ -168,13 +168,12 @@ export default {
       getHomeMultidata().then((res) => {
         this.banners = res.data.banner.list;
         this.recommends = res.data.recommend.list;
-        console.log(res);
       });
     },
 
     getHomeGoods(type) {
       const page = this.goods[type].page + 1;
-      getHomeGoods(type, 1).then((res) => {
+      getHomeGoods(type, page).then((res) => {
         this.goods[type].list.push(...res.data.list);
         // 多了一组数据后，页码要加一
         this.goods[type].page += 1;

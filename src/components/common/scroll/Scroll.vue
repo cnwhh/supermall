@@ -65,7 +65,7 @@ export default {
     refresh() {
       // 先判断有没有值。有值再执行。refresh（）
       this.scroll && this.scroll.refresh();
-      console.log("---");
+      //console.log("---");
     },
     finishPullUp() {
       this.scroll && this.scroll.finishPullUp();
